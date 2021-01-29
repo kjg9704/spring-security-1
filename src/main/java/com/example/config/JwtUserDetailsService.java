@@ -7,10 +7,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.transaction.Transactional;
 
@@ -18,7 +14,6 @@ import javax.transaction.Transactional;
 @RequiredArgsConstructor
 public class JwtUserDetailsService implements UserDetailsService {
 	private final UserRepository userRepository;
-	private final StackRepository stackRepository;
 
 	/**
 	 * Spring Security 필수 메소드 구현

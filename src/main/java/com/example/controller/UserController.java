@@ -2,6 +2,11 @@ package com.example.controller;
 
 import lombok.RequiredArgsConstructor;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -22,9 +27,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+
 
 
 import com.example.config.JwtRequest;
@@ -33,7 +36,6 @@ import com.example.config.JwtTokenUtil;
 import com.example.config.JwtUserDetailsService;
 import com.example.config.Response;
 import com.example.config.UserDto;
-import com.fasterxml.jackson.databind.JsonNode;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -89,21 +91,52 @@ public class UserController {
 	}
 	
 	@ApiOperation(value = "네이버 로그인 검증")
-	@GetMapping(value = "/naverLogin/{naverAccessToken}")
-	public String naverLoginRequest(@PathVariable("naverAccessToken") String naverAccessToken){
-		RestTemplate rt = new RestTemplate();
-		HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer " + naverAccessToken);
-        
-        HttpEntity<MultiValueMap<String, String>> naverRequest =
-                new HttpEntity<>(headers);
-        
-        ResponseEntity<String> response = rt.exchange(
-        		"https://openapi.naver.com/v1/nid/me",
-        	      HttpMethod.GET,
-        	      naverRequest,
-        	      String.class
-        	);
+	@GetMapping(value = "/naverLogin")
+	public String naverLoginRequest(String naverAccessToken){
+		String token = naverAccessToken;// 네아로 접근 토큰 값";
+        String header = "Bearer " + token; // Bearer 다음에 공백 추가
+        System.out.println("------ 헤더확인");
+        System.out.println(header);
+        StringBuffer response = new StringBuffer();
+        try {
+            String apiURL = "https://openapi.naver.com/v1/nid/me";
+            URL url = new URL(apiURL);
+            HttpURLConnection con = (HttpURLConnection)url.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("Authorization", header);
+            int responseCode = con.getResponseCode();
+            System.out.println(responseCode + "-------");
+            BufferedReader br;
+            if(responseCode==200) { // 정상 호출
+                br = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            } else {  // 에러 발생
+                br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
+                
+            }
+            String inputLine;
+            
+            while ((inputLine = br.readLine()) != null) {
+                response.append(inputLine);
+            }
+            br.close();
+            System.out.println(response.toString());
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+		
+//		RestTemplate rt = new RestTemplate();
+//		HttpHeaders headers = new HttpHeaders();
+//        headers.add("Authorization", "Bearer " + naverAccessToken);
+//        
+//        HttpEntity<MultiValueMap<String, String>> naverRequest =
+//                new HttpEntity<>(headers);
+//        
+//        ResponseEntity<String> response = rt.exchange(
+//        		"https://openapi.naver.com/v1/nid/me",
+//        	      HttpMethod.GET,
+//        	      naverRequest,
+//        	      String.class
+//        	);
 //        final UserDetails userDetails = userService
 //				.loadUserByUsername(response.);
 //        final String token = jwtTokenUtil.generateToken(userDetails);
@@ -111,30 +144,27 @@ public class UserController {
 	}
 	
 	@ApiOperation(value = "구글 로그인 검증")
-	@GetMapping(value = "/googleLogin/{googleAccessToken}")
-	public String googleLoginRequest(@PathVariable("googleAccessToken") String googleAccessToken){
-		Payload payload = googleAccessToken.getPayload();
-		GoogleIdToken idToken = verifier.verify(googleAccessToken);
-		String userId = payload.getSubject();
+	@GetMapping(value = "/googleLogin")
+	public String googleLoginRequest(String googleAccessToken){
 		RestTemplate rt = new RestTemplate();
-		HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Bearer " + googleAccessToken);
-        headers.add("Content-type", "application/x-www-form-urlencoded;charset=utf-8");
-        
-        HttpEntity<MultiValueMap<String, String>> kakaoRequest =
-                new HttpEntity<>(headers);
-        
-        ResponseEntity<String> response = rt.exchange(
-        	      "https://kapi.kakao.com/v1/user/access_token_info",
-        	      HttpMethod.GET,
-        	      kakaoRequest,
-        	      String.class
-        	);
+//		HttpHeaders headers = new HttpHeaders();
+//        headers.add("Authorization", "Bearer " + googleAccessToken);
+//        HttpEntity<MultiValueMap<String, String>> googleRequest =
+//                new HttpEntity<>(headers);
+//        System.out.println("----구글 헤더!!");
+        System.out.println("Authorization"+ "Bearer " + googleAccessToken);
+        String response = rt.getForEntity("https://oauth2.googleapis.com/tokeninfo?id_token=" + googleAccessToken, String.class).toString();
+//        ResponseEntity<String> response = rt.exchange(
+//        	      "https://oauth2.googleapis.com/tokeninfo?id_token=" + googleAccessToken,
+//        	      HttpMethod.GET,
+//        	      String.class
+//        	);
 //        final UserDetails userDetails = userService
 //				.loadUserByUsername(response.);
 //        final String token = jwtTokenUtil.generateToken(userDetails);
-        return response.toString();//ResponseEntity.ok(new JwtResponse(token));
+        return response;//ResponseEntity.ok(new JwtResponse(token));
 	}
+	
 	private void authenticate(String username, String password) throws Exception {
 		try {
 			authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
