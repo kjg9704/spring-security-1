@@ -24,8 +24,7 @@ public class JwtTokenUtil implements Serializable {
     @Value("${spring.jwt.secret}")
     private String secret;
 
-    //retrieve username from jwt token
-    // jwt token으로부터 username을 획득한다.
+
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);
     }
@@ -40,7 +39,7 @@ public class JwtTokenUtil implements Serializable {
         final Claims claims = getAllClaimsFromToken(token);
         return claimsResolver.apply(claims);
     }
-    //for retrieveing any information from token we will need the secret key
+    
     private Claims getAllClaimsFromToken(String token) {
         return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
     }

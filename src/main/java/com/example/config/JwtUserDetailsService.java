@@ -1,10 +1,15 @@
 package com.example.config;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import com.example.user.DeletedUser;
+import com.example.user.DeletedUserRepository;
 
 import java.time.LocalDate;
 
@@ -14,6 +19,7 @@ import javax.transaction.Transactional;
 @RequiredArgsConstructor
 public class JwtUserDetailsService implements UserDetailsService {
 	private final UserRepository userRepository;
+	private final DeletedUserRepository deletedUserRepository;
 
 	/**
 	 * Spring Security 필수 메소드 구현
@@ -22,10 +28,14 @@ public class JwtUserDetailsService implements UserDetailsService {
 	 * @return UserDetails
 	 * @throws UsernameNotFoundException 유저가 없을 때 예외 발생
 	 */
-	@Override // 기본적인 반환 타입은 UserDetails, UserDetails를 상속받은 UserInfo로 반환 타입 지정 (자동으로 다운 캐스팅됨)
-	public User loadUserByUsername(String email) throws UsernameNotFoundException { // 시큐리티에서 지정한 서비스이기 때문에 이 메소드를 필수로 구현
-		return userRepository.findByEmail(email)
+	public User loadUserByEmailAndLogintype(String email, String loginType) throws UsernameNotFoundException {
+		return userRepository.findByEmailAndLogintype(email, loginType)
 				.orElseThrow(() -> new UsernameNotFoundException((email)));
+	}
+	@Override
+	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+		 // 시큐리티에서 지정한 서비스이기 때문에 이 메소드를 필수로 구현해야하나 우리는 email중복이 가능하고 (email + logintype) 으로 회원을 특정하기때문에 필요없음.
+		return null;
 	}
 	/**
 	 * 회원정보 저장
@@ -44,6 +54,7 @@ public class JwtUserDetailsService implements UserDetailsService {
 				.name(infoDto.getName())
 				.region(infoDto.getRegion())
 				.job(infoDto.getJob())
+				.logintype(infoDto.getLoginType())
 				.career(infoDto.getCareer())
 				.date(date.toString())
 				.password(infoDto.getPassword()).build());
@@ -56,7 +67,22 @@ public class JwtUserDetailsService implements UserDetailsService {
 		}
 		return user.getUserIndex();
 	}
+	@Transactional
+	public void deletedSave(String email, String loginType) {
+		DeletedUser user = deletedUserRepository.save(DeletedUser.builder()
+				.userEmail(email)
+				.loginType(loginType)
+				.build());
+	}
 	public Boolean isExistEmail(String email) {
 	    return userRepository.existsByEmail(email);
 	  }
+	public String getLoginType(User user) {
+		return 	user.getLoginType();
+	}
+	@Transactional
+	public void deleteUser(String email, String loginType) {
+		userRepository.deleteByEmailAndLogintype(email, loginType);
+	}
+	
 }

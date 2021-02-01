@@ -17,13 +17,24 @@ import java.util.Set;
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(
+		name="user",
+		uniqueConstraints={
+			@UniqueConstraint(
+				columnNames={"email","logintype"}
+			)
+		}
+	)
 public class User implements UserDetails {
 
     @Id @GeneratedValue(strategy = GenerationType.AUTO)
     private long userIndex;
-
-    @Column(name = "email", unique = true)
+    
+    @Column(name = "email")
     private String email;
+    
+    @Column(name = "logintype")
+    private String logintype;
 
     @Column(name = "password")
     private String password;
@@ -58,8 +69,9 @@ public class User implements UserDetails {
     			.build());
     }
     @Builder
-    public User(String email, String password, String auth, String name, String region, String job, String career, String date) {
-        this.email = email;
+    public User(String email, String password, String auth, String name, String region,String logintype, String job, String career, String date) {
+    	this.email = email;
+        this.logintype = logintype;
         this.password = password;
         this.auth = auth;
         this.name = name;
@@ -84,6 +96,10 @@ public class User implements UserDetails {
     @Override
     public String getUsername() {
         return email;
+    }
+    
+    public String getLoginType() {
+        return logintype;
     }
 
     // 사용자의 password를 반환

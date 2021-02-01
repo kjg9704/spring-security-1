@@ -15,6 +15,7 @@ public class UserDto {
   private String region;
   private String job;
   private List<String> stacks = new ArrayList<>();
+  private String loginType;
   private String career;
   private String auth;
 }
