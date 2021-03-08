@@ -21,21 +21,20 @@ public class JwtUserDetailsService implements UserDetailsService {
 	private final UserRepository userRepository;
 	private final DeletedUserRepository deletedUserRepository;
 
-	/**
-	 * Spring Security 필수 메소드 구현
-	 *
-	 * @param email 이메일
-	 * @return UserDetails
-	 * @throws UsernameNotFoundException 유저가 없을 때 예외 발생
-	 */
-	public User loadUserByEmailAndLogintype(String email, String loginType) throws UsernameNotFoundException {
+
+	public UserDetails loadUserByEmailAndLogintype(String email, String loginType) throws UsernameNotFoundException {
+		System.out.println("----이게진짜 유저정보가져옴");
+		System.out.println(email);
+		System.out.println(loginType);
 		return userRepository.findByEmailAndLogintype(email, loginType)
 				.orElseThrow(() -> new UsernameNotFoundException((email)));
 	}
 	@Override
 	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 		 // 시큐리티에서 지정한 서비스이기 때문에 이 메소드를 필수로 구현해야하나 우리는 email중복이 가능하고 (email + logintype) 으로 회원을 특정하기때문에 필요없음.
-		return null;
+		System.out.println("---아이디비번찾으면서 호출됨");
+		return userRepository.findByEmail(email)
+				.orElseThrow(() -> new UsernameNotFoundException((email)));
 	}
 	/**
 	 * 회원정보 저장
@@ -58,10 +57,6 @@ public class JwtUserDetailsService implements UserDetailsService {
 				.career(infoDto.getCareer())
 				.date(date.toString())
 				.password(infoDto.getPassword()).build());
-		System.out.println("-----스택 제대로 들어갔냐?");
-		for(int i = 0; i < infoDto.getStacks().size(); i++) {
-			System.out.println(infoDto.getStacks().get(i));
-		}
 		for(int i = 0; i < infoDto.getStacks().size(); i++) {
 			user.addStacks(infoDto.getStacks().get(i));
 		}

@@ -8,13 +8,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class Response {
-    private String response;
     private String message;
-    private Object data;
 
-    public Response(String response, String message, Object data) {
-        this.response = response;
+    public Response(String message, Object data) {
         this.message = message;
-        this.data = data;
     }
 }

@@ -38,8 +38,6 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 		// only the Token
 		if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
 			jwtToken = requestTokenHeader.substring(7);
-			System.out.println("토큰확인!!!!");
-			System.out.println(jwtToken);
 			try {
 				username = jwtTokenUtil.getUsernameFromToken(jwtToken);
 			} catch (IllegalArgumentException e) {

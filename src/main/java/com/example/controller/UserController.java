@@ -6,12 +6,12 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -43,10 +43,8 @@ import com.example.config.JwtResponse;
 import com.example.config.JwtUserDetailsService;
 import com.example.config.Response;
 import com.example.config.UserDto;
-import com.example.config.UserRepository;
-import com.example.user.DeletedUser;
-import com.example.user.DeletedUserId;
-import com.example.user.DeletedUserRepository;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -67,48 +65,45 @@ public class UserController {
 	@ApiOperation(value = "로그인")
 	@RequestMapping(value = "/signin", method = RequestMethod.POST)
 	public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest) throws Exception {
-		System.out.println("----로그인 시도 아이디 확인");
-		System.out.println(authenticationRequest.getEmail());
-		System.out.println(authenticationRequest.getPassword());
-		System.out.println(authenticationRequest.getLogintype());
 		authenticate(authenticationRequest.getEmail(), authenticationRequest.getPassword());
-
-		final UserDetails userDetails = userService
-				.loadUserByEmailAndLogintype(authenticationRequest.getEmail(), authenticationRequest.getLogintype());
-
+		final UserDetails userDetails = userService.loadUserByEmailAndLogintype(authenticationRequest.getEmail(), authenticationRequest.getLogintype());
 		final String token = jwtTokenUtil.generateToken(userDetails);
-
 		return ResponseEntity.ok(new JwtResponse(token));
 	}
 	
 	@ApiOperation(value = "카카오 로그인 검증")
 	@GetMapping(value = "/kakaoLogin/{kakaoAccessToken}")
-	public String kakaoLoginRequest(@PathVariable("kakaoAccessToken") String kakaoAccessToken){
+	public ResponseEntity<?> kakaoLoginRequest(@PathVariable("kakaoAccessToken") String kakaoAccessToken){
 		RestTemplate rt = new RestTemplate();
 		HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + kakaoAccessToken);
         headers.add("Content-type", "application/x-www-form-urlencoded;charset=utf-8");
-        
         HttpEntity<MultiValueMap<String, String>> kakaoRequest =
                 new HttpEntity<>(headers);
-        
         ResponseEntity<String> response = rt.exchange(
         	      "https://kapi.kakao.com/v1/user/access_token_info",
         	      HttpMethod.GET,
         	      kakaoRequest,
         	      String.class
         	);
-//        final UserDetails userDetails = userService
-//				.loadUserByUsername(response.);
-//        final String token = jwtTokenUtil.generateToken(userDetails);
-        return response.toString();//ResponseEntity.ok(new JwtResponse(token));
+        JsonParser jsonParser = new JsonParser();
+        JsonObject jsonObject = (JsonObject) jsonParser.parse(response.getBody());
+        String id = jsonObject.get("id").toString();
+        UserDetails userDetails;
+        String token = "";
+        try {
+        	userDetails = userService.loadUserByEmailAndLogintype(id, "kakao");
+        	token = jwtTokenUtil.generateToken(userDetails);
+        } catch(Exception e) {
+        	return new ResponseEntity<>("Member registration required",HttpStatus.BAD_REQUEST);
+        }
+        return ResponseEntity.ok(new JwtResponse(token));
 	}
 	
 	@ApiOperation(value = "네이버 로그인 검증")
 	@GetMapping(value = "/naverLogin")
-	public String naverLoginRequest(String naverAccessToken){
-		String token = naverAccessToken;// 네아로 접근 토큰 값";
-        String header = "Bearer " + token; // Bearer 다음에 공백 추가
+	public ResponseEntity<?> naverLoginRequest(String naverAccessToken){
+        String header = "Bearer " + naverAccessToken; // Bearer 다음에 공백 추가
         System.out.println("------ 헤더확인");
         System.out.println(header);
         StringBuffer response = new StringBuffer();
@@ -125,7 +120,6 @@ public class UserController {
                 br = new BufferedReader(new InputStreamReader(con.getInputStream()));
             } else {  // 에러 발생
                 br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
-                
             }
             String inputLine;
             
@@ -135,48 +129,41 @@ public class UserController {
             br.close();
             System.out.println(response.toString());
         } catch (Exception e) {
-            System.out.println(e);
+        	return new ResponseEntity<>("error",HttpStatus.BAD_REQUEST);
         }
-		
-//		RestTemplate rt = new RestTemplate();
-//		HttpHeaders headers = new HttpHeaders();
-//        headers.add("Authorization", "Bearer " + naverAccessToken);
-//        
-//        HttpEntity<MultiValueMap<String, String>> naverRequest =
-//                new HttpEntity<>(headers);
-//        
-//        ResponseEntity<String> response = rt.exchange(
-//        		"https://openapi.naver.com/v1/nid/me",
-//        	      HttpMethod.GET,
-//        	      naverRequest,
-//        	      String.class
-//        	);
-//        final UserDetails userDetails = userService
-//				.loadUserByUsername(response.);
-//        final String token = jwtTokenUtil.generateToken(userDetails);
-        return response.toString();//ResponseEntity.ok(new JwtResponse(token));
+        JsonParser jsonParser = new JsonParser();
+        JsonObject jsonObject = (JsonObject) jsonParser.parse(response.toString());
+        JsonObject res = (JsonObject) jsonObject.get("response");
+        String id = res.get("id").toString();
+        UserDetails userDetails;
+        String token = "";
+        try {
+        	userDetails = userService.loadUserByEmailAndLogintype(id, "naver");
+        	token = jwtTokenUtil.generateToken(userDetails);
+        } catch(Exception e) {
+        	return new ResponseEntity<>("Member registration required",HttpStatus.BAD_REQUEST);
+        }
+        return ResponseEntity.ok(new JwtResponse(token));
 	}
 	
 	@ApiOperation(value = "구글 로그인 검증")
 	@GetMapping(value = "/googleLogin")
-	public String googleLoginRequest(String googleAccessToken){
+	public ResponseEntity<?> googleLoginRequest(String googleAccessToken){
 		RestTemplate rt = new RestTemplate();
-//		HttpHeaders headers = new HttpHeaders();
-//        headers.add("Authorization", "Bearer " + googleAccessToken);
-//        HttpEntity<MultiValueMap<String, String>> googleRequest =
-//                new HttpEntity<>(headers);
-//        System.out.println("----구글 헤더!!");
         System.out.println("Authorization"+ "Bearer " + googleAccessToken);
         String response = rt.getForEntity("https://oauth2.googleapis.com/tokeninfo?id_token=" + googleAccessToken, String.class).toString();
-//        ResponseEntity<String> response = rt.exchange(
-//        	      "https://oauth2.googleapis.com/tokeninfo?id_token=" + googleAccessToken,
-//        	      HttpMethod.GET,
-//        	      String.class
-//        	);
-//        final UserDetails userDetails = userService
-//				.loadUserByUsername(response.);
-//        final String token = jwtTokenUtil.generateToken(userDetails);
-        return response;//ResponseEntity.ok(new JwtResponse(token));
+        JsonParser jsonParser = new JsonParser();
+        JsonObject jsonObject = (JsonObject) jsonParser.parse(response);
+        String id = jsonObject.get("sub").toString();
+        UserDetails userDetails;
+        String token = "";
+        try {
+        	userDetails = userService.loadUserByEmailAndLogintype(id, "google");
+        	token = jwtTokenUtil.generateToken(userDetails);
+        } catch(Exception e) {
+        	return new ResponseEntity<>("Member registration required",HttpStatus.BAD_REQUEST);
+        }
+        return ResponseEntity.ok(new JwtResponse(token));
 	}
 	
 	private void authenticate(String username, String password) throws Exception {
@@ -189,33 +176,32 @@ public class UserController {
 		}
 	}
 	@DeleteMapping("/withdraw")
-	public String withDraw(@AuthenticationPrincipal com.example.config.User user) {
-		String response = "";
-		String userEmail = user.getUsername();
-		System.out.println("----삭제 유저 이메일!");
-		System.out.println(userEmail);
-		String loginType = userService.getLoginType(user);
-		System.out.println("----삭제 유저 로그인타입!");
-		System.out.println(loginType);
-		userService.deleteUser(userEmail, loginType);
-		userService.deletedSave(userEmail, loginType);
-		return response;
+	public ResponseEntity<?> withDraw(@AuthenticationPrincipal com.example.config.User user) {
+		Response response = new Response();
+		try {
+			String userEmail = user.getUsername();
+			String loginType = userService.getLoginType(user);
+			userService.deleteUser(userEmail, loginType);
+			userService.deletedSave(userEmail, loginType);
+			response.setMessage("success");
+		} catch(Exception e) {
+			return new ResponseEntity<>("failed",HttpStatus.BAD_REQUEST);
+		}
+		return ResponseEntity.ok(response);
 	}
 	
     @ApiOperation(value = "회원가입")
     @PostMapping("/signup")
-    public Response signup(@RequestBody @ApiParam(value = "가입 유저 정보") UserDto infoDto) {
+    public ResponseEntity<?> signup(@RequestBody @ApiParam(value = "가입 유저 정보") UserDto infoDto) {
         Response response = new Response();
         try {
             userService.save(infoDto);
-            response.setResponse("success");
-            response.setMessage("회원가입을 성공적으로 완료했습니다.");
+            response.setMessage("success");
         } catch (Exception e) {
-            response.setResponse("failed");
-            response.setMessage("회원가입을 하는 도중 오류가 발생했습니다.");
-            response.setData(e.toString());
+            response.setMessage("failed");
+            return new ResponseEntity<>("failed",HttpStatus.BAD_REQUEST);
         }
-        return response;
+        return ResponseEntity.ok(response);
     }
     @ApiOperation(value = "이메일 중복확인")
     @GetMapping("/email/is-exist")
